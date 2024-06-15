@@ -1,15 +1,35 @@
 from PIL import Image
 import heapq
+import random
+import tkinter as tk
+from tkinter import filedialog
 
-def image_to_2d_list(image_path):
-    image = Image.open(image_path)
+def browse_image():
+    file_path = filedialog.askopenfilename(filetypes=[("Image files", "*.png *.jpg *.jpeg *.gif *.bmp")])
+    if file_path:
+        print("Selected image:", file_path)
+        root.destroy()  # Close the Tkinter window
+        # Continue with the rest of your code here
+    else:
+        print("No image selected.")
+
+root = tk.Tk()
+root.title("Image Browser")
+
+browse_button = tk.Button(root, text="Browse Image", command=browse_image)
+browse_button.pack(pady=10)
+
+root.mainloop()
+
+def image_to_2d_list(folder_path):
+    image = Image.open(folder_path)
     grayscale_image = image.convert('L')
     pixel_values = list(grayscale_image.getdata())
     width, height = grayscale_image.size
     two_d_list = [[1 if pixel == 0 else 0 for pixel in pixel_values[i:i+width]] for i in range(0, len(pixel_values), width)]
     return two_d_list
 
-def save_maze_image(maze, file_path):
+def save_maze_image(maze):
     colors = {
         0: (255, 255, 255),  # White
         1: (0, 0, 0),        # Black
@@ -23,7 +43,10 @@ def save_maze_image(maze, file_path):
         for col in range(width):
             image.putpixel((col, row), colors[maze[row][col]])
 
+    random_number = random.randint(1, 10000000000)  # Generate a random number between 1 and 1,000,000
+    file_path = f"mazes/maze_image-{random_number}.png"
     image.save(file_path)
+    return file_path
 
 def is_valid_move(maze, row, col):
     rows, cols = len(maze), len(maze[0])
@@ -69,8 +92,8 @@ def find_path(maze, start, end):
 
     return None
 
-image_path = 'maze.png'
-result = image_to_2d_list(image_path)
+folder_path = 'maze.png'
+result = image_to_2d_list(folder_path)
 start_positions = [(0, 0), (1, 0), (0, 1), (1, 1)]
 end_position = (len(result) - 2, len(result[0]) - 2)
 maze = result
@@ -84,8 +107,8 @@ for start_position in start_positions:
             # print(f"Path found from start position {start_position}:")
             # for row in updated_maze:
             #     print(row)
-            
-            save_maze_image(updated_maze, "mazes/maze_image.png")
+            file_path = save_maze_image(updated_maze)
+            print(f"Saved maze image as: {file_path}")
             break
 else:
     print("No valid path found from any start position.")
