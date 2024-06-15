@@ -1,7 +1,14 @@
 from PIL import Image
 import heapq
 
-# Function to save the maze as an image
+def image_to_2d_list(image_path):
+    image = Image.open(image_path)
+    grayscale_image = image.convert('L')
+    pixel_values = list(grayscale_image.getdata())
+    width, height = grayscale_image.size
+    two_d_list = [[1 if pixel == 0 else 0 for pixel in pixel_values[i:i+width]] for i in range(0, len(pixel_values), width)]
+    return two_d_list
+
 def save_maze_image(maze, file_path):
     colors = {
         0: (255, 255, 255),  # White
@@ -12,88 +19,73 @@ def save_maze_image(maze, file_path):
     height, width = len(maze), len(maze[0])
     image = Image.new("RGB", (width, height))
 
-    # Fill the image with colors based on the maze
     for row in range(height):
         for col in range(width):
             image.putpixel((col, row), colors[maze[row][col]])
 
-    # Save the image to the specified file path
     image.save(file_path)
 
-# Function to check if a move is valid
 def is_valid_move(maze, row, col):
     rows, cols = len(maze), len(maze[0])
     return 0 <= row < rows and 0 <= col < cols and maze[row][col] == 0
 
-# Heuristic function for A* algorithm (Manhattan distance)
 def heuristic(position, goal):
     return abs(position[0] - goal[0]) + abs(position[1] - goal[1])
 
-# A* algorithm to find the path in the maze
 def find_path(maze, start, end):
     rows, cols = len(maze), len(maze[0])
     visited = [[False for _ in range(cols)] for _ in range(rows)]
-
-    # Priority queue for A* algorithm (heuristic cost, position)
-    pq = [(heuristic(start, end), start)]
+    came_from = [[None for _ in range(cols)] for _ in range(rows)]
+    
+    pq = [(heuristic(start, end), 0, start)]
     heapq.heapify(pq)
 
-    # A* algorithm loop
     while pq:
-        current_cost, current = heapq.heappop(pq)
+        _, cost, current = heapq.heappop(pq)
         row, col = current
 
-        # If the goal is reached, reconstruct the path
+        if visited[row][col]:
+            continue
+
+        visited[row][col] = True
+
         if current == end:
             path = [end]
             while current != start:
-                current = visited[current[0]][current[1]]
+                current = came_from[current[0]][current[1]]
                 path.append(current)
             return path[::-1]
 
-        # Possible directions: up, down, left, right
         directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
         for dr, dc in directions:
             new_row, new_col = row + dr, col + dc
 
-            # Check if the move is valid and not visited
             if is_valid_move(maze, new_row, new_col) and not visited[new_row][new_col]:
-                visited[new_row][new_col] = current
-                cost = heuristic((new_row, new_col), end)
-                heapq.heappush(pq, (cost, (new_row, new_col)))
+                came_from[new_row][new_col] = (row, col)
+                new_cost = cost + 1
+                total_cost = new_cost + heuristic((new_row, new_col), end)
+                heapq.heappush(pq, (total_cost, new_cost, (new_row, new_col)))
 
-    # If no path is found
     return None
 
-# Example maze
-maze = open('out.txt', 'r') # stopped here check this
+image_path = 'maze.png'
+result = image_to_2d_list(image_path)
+start_positions = [(0, 0), (1, 0), (0, 1), (1, 1)]
+end_position = (len(result) - 2, len(result[0]) - 2)
+maze = result
 
-rows, cols = len(maze), len(maze[0])
-
-start_position = (1, 1)  # Example start position
-end_position = (rows - 2, cols - 2)  # Example end position
-
-# Find the path using A* algorithm
-final_path = find_path(maze, start_position, end_position)
-
-# Display the original and updated maze (if a path is found)
-if final_path:
-    updated_maze = [[2 if (row, col) in final_path else maze[row][col] for col in range(cols)] for row in range(rows)]
-
-    print("Original Maze:")
-    for row in maze:
-        print(row)
-
-    print("\nUpdated Maze with Path:")
-    for row in updated_maze:
-        print(row)
+for start_position in start_positions:
+    if maze[start_position[0]][start_position[1]] == 0 and maze[end_position[0]][end_position[1]] == 0:
+        final_path = find_path(maze, start_position, end_position)
+        if final_path:
+            updated_maze = [[2 if (row, col) in final_path else maze[row][col] for col in range(len(maze[0]))] for row in range(len(maze))]
+            print(f"Path found from start position {start_position}")
+            # print(f"Path found from start position {start_position}:")
+            # for row in updated_maze:
+            #     print(row)
+            
+            save_maze_image(updated_maze, "mazes/maze_image.png")
+            break
 else:
-    print("No path found.")
-
-# Save the maze image with the path (if a path is found)
-if final_path:
-    save_maze_image(updated_maze, "maze_image.png")
-else:
-    print("No path found.")
-
+    print("No valid path found from any start position.")
